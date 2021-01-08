@@ -22,7 +22,7 @@ def sec_to_ms(sec):
 
 def main():
     print("MODEL NAME, \tBATCH SIZE,\tAVG LATENCY (ms),\tAVG MEM USAGE (MB)")
-
+    #parser
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_name', type=str)
     parser.add_argument('--num_inference', type=int)
@@ -31,10 +31,10 @@ def main():
     model_name = args.model_name
     num_inference = args.num_inference
     batch_size = args.batch_size
-
     # stores inference latency values (unit: sec)
     l_inference_latency = list()
-    # train
+    # call corresponding DNN model...
+    # TODO: ADD RECSYS MODEL!
     if (model_name == "resnet"):
         with torch.no_grad():
             model = models.resnet18(True, True)
