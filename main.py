@@ -6,6 +6,15 @@ import argparse
 from torchvision import datasets, models, transforms
 from transformers import AutoTokenizer, AutoModel
 
+def average_90_percent(l):
+    # average over iterable
+    # check only last ~90% of elements (warmup)
+    if (len(l) < 10):
+        print("average(): I need at least 10 items to work with!")
+        return 0
+    better_l = l[int(len(l)/10):]
+    return sum(better_l) / len(better_l)
+
 def sec_to_ms(sec):
     # a.bcdefghijk... --> "abcd.efg"
     return str(int(sec * 10**6) / 10**3)
@@ -21,17 +30,14 @@ def main():
     model_name = args.model_name
     num_inference = args.num_inference
     batch_size = args.batch_size
+
+    # stores inference latency values (unit: sec)
+    l_inference_latency = list()
     # train
     if (model_name == "resnet"):
         with torch.no_grad():
             model = models.resnet18(True, True)
-            # warmup
-            for i in range(50):
-                # input
-                empty_tensor = torch.zeros(batch_size, 3, 224, 224)
-                model(empty_tensor)
             # inference
-            inference_times = list()
             for i in range(num_inference):
                 # input
                 empty_tensor = torch.zeros(batch_size, 3, 224, 224)
@@ -39,21 +45,29 @@ def main():
                 model(empty_tensor)
                 torch.cuda.synchronize()
                 end_time = time.time()
-                inference_times.append(end_time - start_time)
-            str_avg_inf_time = sec_to_ms(sum(inference_times) / len(inference_times))
+                l_inference_latency.append(end_time - start_time)
+            str_avg_inf_time = sec_to_ms(average_90_percent(l_inference_latency))
             print(",".join(["RESNET18", str(batch_size), str_avg_inf_time]))
+
     elif (model_name == "mobilenet"):
-        return None
+        with torch.no_grad():
+            model = models.mobilenet_v2(True, True)
+            # warmup
+            for i in range(num_inference):
+                empty_tensor = torch.zeros(batch_size, 3, 224, 224)
+                start_time = time.time()
+                model(empty_tensor)
+                torch.cuda.synchronize()
+                end_time = time.time()
+                l_inference_latency.append(end_time - start_time)
+            str_avg_inf_time = sec_to_ms(average_90_percent(l_inference_latency))
+            print(",".join(["MOBILENET_V2", str(batch_size), str_avg_inf_time]))
+
     elif (model_name == "bert"):
         with torch.no_grad():
             tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
             model = AutoModel.from_pretrained("bert-base-uncased")
-            # warmup
-            for i in range(50):
-                token_list = ["warmup tokens!"] * batch_size
-                inputs = tokenizer(token_list, return_tensors="pt")
             # inference
-            inference_times = list()
             for i in range(num_inference):
                 token_list = ["warmup tokens!"] * batch_size
                 inputs = tokenizer(token_list, return_tensors="pt")
@@ -61,8 +75,8 @@ def main():
                 outputs = model(**inputs)
                 torch.cuda.synchronize()
                 end_time = time.time()
-                inference_times.append(end_time - start_time)
-            str_avg_inf_time = sec_to_ms(sum(inference_times) / len(inference_times))
+                l_inference_latency.append(end_time - start_time)
+            str_avg_inf_time = sec_to_ms(average_90_percent(l_inference_latency))
             print(",".join(["BERT-BASE-UNCASED", str(batch_size), str_avg_inf_time]))
     else:
         print("Unidentified model name: {}".format(model_name))
