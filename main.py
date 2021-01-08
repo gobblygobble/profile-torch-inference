@@ -4,7 +4,8 @@ import time
 import argparse
 
 from torchvision import datasets, models, transforms
-from transformers import AutoTokenizer, AutoModel
+from transformers import AutoTokenizer, AutoModel # BERT
+from transformers import GPT2Tokenizer, GPT2Model # GPT2
 
 def average_90_percent(l):
     # average over iterable
@@ -69,8 +70,8 @@ def main():
             model = AutoModel.from_pretrained("bert-base-uncased")
             # inference
             for i in range(num_inference):
-                token_list = ["warmup tokens!"] * batch_size
-                inputs = tokenizer(token_list, return_tensors="pt")
+                texts = ["inference tokens!"] * batch_size
+                inputs = tokenizer(texts, return_tensors="pt")
                 start_time = time.time()
                 outputs = model(**inputs)
                 torch.cuda.synchronize()
@@ -78,10 +79,26 @@ def main():
                 l_inference_latency.append(end_time - start_time)
             str_avg_inf_time = sec_to_ms(average_90_percent(l_inference_latency))
             print(",".join(["BERT-BASE-UNCASED", str(batch_size), str_avg_inf_time]))
+
+    elif (model_name == "gpt2"):
+        with torch.no_grad():
+            tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+            model = GPT2Model.from_pretrained("gpt2")
+            # inference
+            for i in range(num_inference):
+                texts = ["these are some pretty long inference tokens!"] * batch_size
+                inputs = tokenizer(texts, return_tensors="pt")
+                start_time = time.time()
+                outputs = model(**inputs)
+                torch.cuda.synchronize()
+                end_time = time.time()
+                l_inference_latency.append(end_time - start_time)
+            str_avg_inf_time = sec_to_ms(average_90_percent(l_inference_latency))
+            print(",".join(["GPT2", str(batch_size), str_avg_inf_time]))
     else:
         print("Unidentified model name: {}".format(model_name))
         return
-# allocated memory: torch.cuda.memory_allocated() but this keeps returning 0
+# cf) allocated memory: torch.cuda.memory_allocated() but this keeps returning 0
 
 
 if __name__ == "__main__":
