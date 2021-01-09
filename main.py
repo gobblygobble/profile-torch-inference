@@ -40,7 +40,7 @@ def main():
     l_memory_capacity = list()
     # call corresponding DNN model...
     # TODO: ADD RECSYS MODEL!
-    if (model_name == "resnet"):
+    if (model_name == "resnet18"):
         with torch.no_grad():
             model = models.resnet18(True, True)
             if torch.cuda.is_available():
@@ -60,6 +60,27 @@ def main():
             str_avg_inf_time = sec_to_ms(average_90_percent(l_inference_latency))
             str_avg_mem_usage = bytes_to_mib(average_90_percent(l_memory_capacity))
             print(",".join(["RESNET18", str(batch_size), str_avg_inf_time, str_avg_mem_usage]))
+
+    elif (model_name == "wide_resnet101_2"):
+        with torch.no_grad():
+            model = models.wide_resnet101_2(True, True)
+            if torch.cuda.is_available():
+                model = model.cuda()
+            # inference
+            for i in range(num_inference):
+                # input
+                inputs = torch.zeros(batch_size, 3, 224, 224)
+                if torch.cuda.is_available():
+                    inputs = inputs.to('cuda')
+                start_time = time.time()
+                model(inputs)
+                torch.cuda.synchronize()
+                end_time = time.time()
+                l_inference_latency.append(end_time - start_time)
+                l_memory_capacity.append(torch.cuda.memory_allocated())
+            str_avg_inf_time = sec_to_ms(average_90_percent(l_inference_latency))
+            str_avg_mem_usage = bytes_to_mib(average_90_percent(l_memory_capacity))
+            print(",".join(["WIDE-RESNET101-2", str(batch_size), str_avg_inf_time, str_avg_mem_usage]))
 
     elif (model_name == "mobilenet"):
         with torch.no_grad():
