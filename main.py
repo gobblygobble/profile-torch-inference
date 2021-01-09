@@ -20,8 +20,12 @@ def sec_to_ms(sec):
     # a.bcdefghijk... --> "abcd.efg"
     return str(int(sec * 10**6) / 10**3)
 
+def bytes_to_mib(bytes):
+    # 50*1024*1024 --> "50.000"
+    return str(int((bytes * 10**3) / 2**20) / 10**3)
+
 def main():
-    print("MODEL NAME, \tBATCH SIZE,\tAVG LATENCY (ms),\tAVG MEM USAGE (MB)")
+    print("MODEL NAME, BATCH SIZE, AVG LATENCY (ms), AVG MEM USAGE (MiB)")
     #parser
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_name', type=str)
@@ -31,75 +35,101 @@ def main():
     model_name = args.model_name
     num_inference = args.num_inference
     batch_size = args.batch_size
-    # stores inference latency values (unit: sec)
+    # stores latency / memory usage values
     l_inference_latency = list()
+    l_memory_capacity = list()
     # call corresponding DNN model...
     # TODO: ADD RECSYS MODEL!
     if (model_name == "resnet"):
         with torch.no_grad():
             model = models.resnet18(True, True)
+            if torch.cuda.is_available():
+                model = model.cuda()
             # inference
             for i in range(num_inference):
                 # input
-                empty_tensor = torch.zeros(batch_size, 3, 224, 224)
+                inputs = torch.zeros(batch_size, 3, 224, 224)
+                if torch.cuda.is_available():
+                    inputs = inputs.to('cuda')
                 start_time = time.time()
-                model(empty_tensor)
+                model(inputs)
                 torch.cuda.synchronize()
                 end_time = time.time()
                 l_inference_latency.append(end_time - start_time)
+                l_memory_capacity.append(torch.cuda.memory_allocated())
             str_avg_inf_time = sec_to_ms(average_90_percent(l_inference_latency))
-            print(",".join(["RESNET18", str(batch_size), str_avg_inf_time]))
+            str_avg_mem_usage = bytes_to_mib(average_90_percent(l_memory_capacity))
+            print(",".join(["RESNET18", str(batch_size), str_avg_inf_time, str_avg_mem_usage]))
 
     elif (model_name == "mobilenet"):
         with torch.no_grad():
             model = models.mobilenet_v2(True, True)
+            if torch.cuda.is_available():
+                model = model.cuda()
             # warmup
             for i in range(num_inference):
-                empty_tensor = torch.zeros(batch_size, 3, 224, 224)
+                inputs = torch.zeros(batch_size, 3, 224, 224)
+                if torch.cuda.is_available():
+                    inputs = inputs.to('cuda')
                 start_time = time.time()
-                model(empty_tensor)
+                model(inputs)
                 torch.cuda.synchronize()
                 end_time = time.time()
                 l_inference_latency.append(end_time - start_time)
+                l_memory_capacity.append(torch.cuda.memory_allocated())
             str_avg_inf_time = sec_to_ms(average_90_percent(l_inference_latency))
-            print(",".join(["MOBILENET_V2", str(batch_size), str_avg_inf_time]))
+            str_avg_mem_usage = bytes_to_mib(average_90_percent(l_memory_capacity))
+            print(",".join(["MOBILENET_V2", str(batch_size), str_avg_inf_time, str_avg_mem_usage]))
 
     elif (model_name == "bert"):
         with torch.no_grad():
             tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
             model = AutoModel.from_pretrained("bert-base-uncased")
+            if torch.cuda.is_available():
+                model = model.cuda()
             # inference
             for i in range(num_inference):
-                texts = ["inference tokens!"] * batch_size
+                texts = ["these are some pretty long inference tokens!"] * batch_size
                 inputs = tokenizer(texts, return_tensors="pt")
+                if torch.cuda.is_available():
+                    inputs = inputs.to('cuda')
                 start_time = time.time()
                 outputs = model(**inputs)
                 torch.cuda.synchronize()
                 end_time = time.time()
                 l_inference_latency.append(end_time - start_time)
+                l_memory_capacity.append(torch.cuda.memory_allocated())
             str_avg_inf_time = sec_to_ms(average_90_percent(l_inference_latency))
-            print(",".join(["BERT-BASE-UNCASED", str(batch_size), str_avg_inf_time]))
+            str_avg_mem_usage = bytes_to_mib(average_90_percent(l_memory_capacity))
+            print(",".join(["BERT-BASE-UNCASED", str(batch_size), str_avg_inf_time, str_avg_mem_usage]))
 
     elif (model_name == "gpt2"):
         with torch.no_grad():
             tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
             model = GPT2Model.from_pretrained("gpt2")
+            if torch.cuda.is_available():
+                model = model.cuda()
             # inference
             for i in range(num_inference):
                 texts = ["these are some pretty long inference tokens!"] * batch_size
                 inputs = tokenizer(texts, return_tensors="pt")
+                if torch.cuda.is_available():
+                    inputs = inputs.to('cuda')
                 start_time = time.time()
                 outputs = model(**inputs)
                 torch.cuda.synchronize()
                 end_time = time.time()
                 l_inference_latency.append(end_time - start_time)
+                l_memory_capacity.append(torch.cuda.memory_allocated())
             str_avg_inf_time = sec_to_ms(average_90_percent(l_inference_latency))
-            print(",".join(["GPT2", str(batch_size), str_avg_inf_time]))
+            str_avg_mem_usage = bytes_to_mib(average_90_percent(l_memory_capacity))
+            print(",".join(["GPT2", str(batch_size), str_avg_inf_time, str_avg_mem_usage]))
+    
+    elif (model_name == "dlrm"):
+        print("Unimplemented model name: DLRM")
     else:
         print("Unidentified model name: {}".format(model_name))
         return
-# cf) allocated memory: torch.cuda.memory_allocated() but this keeps returning 0
-
 
 if __name__ == "__main__":
     main()
