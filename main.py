@@ -25,7 +25,7 @@ def bytes_to_mib(bytes):
     return str(int((bytes * 10**3) / 2**20) / 10**3)
 
 def main():
-    print("MODEL NAME, BATCH SIZE, AVG LATENCY (ms), AVG MEM USAGE (MiB)")
+    #print("MODEL NAME, BATCH SIZE, AVG LATENCY (ms), AVG MEM USAGE (MiB)")
     #parser
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_name', type=str)
