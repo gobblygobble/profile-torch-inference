@@ -114,7 +114,9 @@ def main():
                 model = model.cuda()
             # inference
             for i in range(num_inference):
-                texts = ["these are some pretty long inference tokens!"] * batch_size
+                # BERT maximum sequence length 512
+                sample_text = "BERT" * int(512/4)
+                texts = [sample_text] * batch_size
                 inputs = tokenizer(texts, return_tensors="pt")
                 if use_gpu:
                     inputs = inputs.to('cuda')
@@ -136,7 +138,9 @@ def main():
                 model = model.cuda()
             # inference
             for i in range(num_inference):
-                texts = ["these are some pretty long inference tokens!"] * batch_size
+                # GPT2 maximum sequence length 124
+                sample_text = "GPT2" * int(1024/4)
+                texts = [sample_text] * batch_size
                 inputs = tokenizer(texts, return_tensors="pt")
                 if use_gpu:
                     inputs = inputs.to('cuda')
